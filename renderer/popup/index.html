@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <title>摸鱼收藏夹 · 悬浮窗</title>
+  <link rel="stylesheet" href="../shared.css" />
+</head>
+<body>
+  <div id="root">
+    <div class="dragbar">
+      <span class="brand">🎬 摸鱼收藏夹</span>
+      <span class="progress" id="prog">就绪</span>
+      <button id="btn-pin" title="置顶/取消置顶" class="active">📌</button>
+      <button id="btn-hide" title="隐藏到托盘">×</button>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-tab="watch">📺 观看记录</button>
+      <button class="tab" data-tab="fav">📁 收藏夹</button>
+      <button class="tab" data-tab="org">🤖 自动整理</button>
+    </div>
+    <div id="content">
+      <div class="view" id="view-watch"></div>
+      <div class="view hidden" id="view-fav"></div>
+      <div class="view hidden" id="view-org"></div>
+    </div>
+    <div class="actions" id="actions"></div>
+    <div class="resize-grip"></div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

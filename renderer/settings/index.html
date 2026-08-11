@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <title>摸鱼收藏夹 · 设置</title>
+  <link rel="stylesheet" href="../shared.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="titlebar">
+      <div class="t-left"><span class="logo">🎬</span><span>摸鱼收藏夹 · 设置</span></div>
+      <div class="t-right"><span class="status" id="status-line">就绪</span>
+        <button id="btn-min" title="最小化">—</button><button id="btn-close" title="关闭">×</button></div>
+    </header>
+    <aside class="sidebar">
+      <nav>
+        <a class="nav-item active" data-go="overview"><span class="ico">📊</span><span class="label">数据概览</span></a>
+        <a class="nav-item" data-go="general"><span class="ico">⚙</span><span class="label">通用设置</span></a>
+        <a class="nav-item" data-go="account"><span class="ico">🔑</span><span class="label">采集账号</span></a>
+        <a class="nav-item" data-go="appearance"><span class="ico">🎨</span><span class="label">悬浮窗外观</span></a>
+        <a class="nav-item" data-go="hotkey"><span class="ico">⌨</span><span class="label">全局快捷键</span></a>
+        <a class="nav-item" data-go="rules"><span class="ico">🤖</span><span class="label">自动整理规则</span></a>
+        <a class="nav-item" data-go="about"><span class="ico">ℹ</span><span class="label">关于</span></a>
+      </nav>
+      <div class="sidebar-foot">
+        <button id="btn-show-popup">显示悬浮窗</button>
+        <button id="btn-quit" class="danger">退出应用</button>
+      </div>
+    </aside>
+    <main class="content">
+      <!-- 概览 -->
+      <section class="page active" id="page-overview"><h2>数据概览</h2>
+        <div class="stat-grid" id="stat-grid"></div>
+        <div style="height:18px"></div>
+        <div class="card"><div class="card-hd"><h3>观看热力图</h3>
+          <div class="heat-legend"><span>少</span><span class="cell" style="background:var(--heat-0)"></span><span class="cell" style="background:var(--heat-1)"></span><span class="cell" style="background:var(--heat-2)"></span><span class="cell" style="background:var(--heat-3)"></span><span class="cell" style="background:var(--heat-4)"></span><span>多</span></div></div>
+          <div class="heat-scroll"><div class="heat" id="heat"></div></div>
+        </div>
+      </section>
+      <!-- 通用 -->
+      <section class="page" id="page-general"><h2>通用设置</h2>
+        <div class="card" id="general-card"></div>
+      </section>
+      <!-- 采集账号 -->
+      <section class="page" id="page-account"><h2>采集账号</h2>
+        <div class="card"><div class="card-hd"><h3>采集模式与凭据</h3>
+          <button class="btn primary" id="btn-collect">立即采集</button></div>
+          <div class="field"><span class="label">采集模式</span>
+            <select id="collectMode"><option value="demo">演示数据（开箱即用）</option><option value="real">真实采集（需 Cookie + 签名）</option></select></div>
+          <div class="field"><span class="label">抖音 Cookie（真实模式，仅存本机）</span>
+            <textarea id="cookie" rows="3" placeholder="粘贴登录后的 Cookie 字符串，或浏览器 devtools 导出的 Cookie JSON 数组…"></textarea>
+            <span id="cookie-hint" class="muted small"></span></div>
+          <div class="field"><span class="label">有效性检测</span>
+            <div style="display:flex;gap:10px;align-items:center">
+              <button class="btn" id="btn-check-cookie">检测 Cookie</button>
+              <span id="cookie-status" class="muted small"></span>
+            </div></div>
+          <p class="muted small">真实采集仅针对本人账号，需 X-Bogus 签名。支持两种粘贴格式：① 直接复制请求里的 <code>Cookie</code> 请求头字符串；② 浏览器/插件导出的 Cookie JSON 数组（形如 <code>[{name,value,...}]</code>），本工具会自动转换为字符串。点「检测 Cookie」可先用一次轻量请求验证登录态。</p>
+          <div class="field"><span class="label">本地数据管理</span>
+            <div style="display:flex;gap:10px;align-items:center">
+              <button class="btn danger" id="btn-clear-data">清空本地数据</button>
+              <span class="muted small">清空本机已采集的观看/收藏（不含设置与规则），随后重新采集即可。</span>
+            </div></div>
+        </div>
+      </section>
+      <!-- 外观 -->
+      <section class="page" id="page-appearance"><h2>悬浮窗外观</h2>
+        <div class="card"><div class="card-hd"><h3>主题</h3></div>
+          <div class="theme-switch" id="theme-switch" style="display:flex;gap:10px">
+            <span class="theme-dot active" data-theme="light" title="浅色" style="width:28px;height:28px;border-radius:50%;background:#f6f7f9;border:2px solid var(--border);cursor:pointer"></span>
+            <span class="theme-dot" data-theme="dark" title="深色" style="width:28px;height:28px;border-radius:50%;background:#12151c;border:2px solid var(--border);cursor:pointer"></span>
+            <span class="theme-dot" data-theme="ink" title="水墨" style="width:28px;height:28px;border-radius:50%;background:#f3f0e8;border:2px solid var(--border);cursor:pointer"></span>
+            <span class="theme-dot" data-theme="mint" title="薄荷" style="width:28px;height:28px;border-radius:50%;background:#dcf0e8;border:2px solid var(--border);cursor:pointer"></span>
+            <span class="theme-dot" data-theme="ide" title="IDE" style="width:28px;height:28px;border-radius:50%;background:#1e1e1e;border:2px solid var(--border);cursor:pointer"></span>
+          </div>
+          <p class="muted small" style="margin-top:12px">主题与 words-fish 完全一致（浅色/深色/水墨/薄荷/IDE）。</p>
+        </div>
+      </section>
+      <!-- 快捷键 -->
+      <section class="page" id="page-hotkey"><h2>全局快捷键</h2>
+        <div class="card"><div class="setting-row"><div class="setting-info"><h3>召唤悬浮窗</h3><p>按下后显示/隐藏悬浮窗（默认 Shift+D）。</p></div>
+          <input id="hotkey" style="width:160px;padding:8px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;font-family:Consolas,monospace" /></div>
+        </div>
+      </section>
+      <!-- 规则 -->
+      <section class="page" id="page-rules"><h2>自动整理规则</h2>
+        <div id="rules-list"></div>
+        <button class="btn primary" id="btn-add-rule">+ 新增规则</button>
+      </section>
+      <!-- 关于 -->
+      <section class="page" id="page-about"><h2>关于</h2>
+        <div class="card about"><h3>抖音摸鱼收藏夹 v1.0.0</h3>
+          <p class="ver muted">本地优先的抖音收藏与观看记录管理工具</p>
+          <p style="margin-top:10px">功能参考 GitHub：Evil0ctal/Douyin_TikTok_Download_API、JoeanAmier/TikTokDownloader、tars1230/douyin-favorites-to-knowledge 等；UI 风格对齐 cv-superding/words-fish。</p>
+          <p style="margin-top:8px">数据全部存于本机 userData，不上云。</p>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="settings.js"></script>
+</body>
+</html>

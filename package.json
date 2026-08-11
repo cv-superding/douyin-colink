@@ -1,0 +1,42 @@
+{
+  "name": "douyin-colink",
+  "version": "1.0.0",
+  "description": "抖音收藏与观看记录的摸鱼悬浮窗应用",
+  "main": "main/index.js",
+  "author": "douyin-colink",
+  "license": "Apache-2.0",
+    "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win",
+    "dist:portable": "electron-builder --win portable",
+    "pack": "electron-builder --win dir"
+  },
+  "build": {
+    "appId": "com.douyin.colink",
+    "productName": "抖音摸鱼收藏夹",
+    "copyright": "Copyright © 2026 douyin-colink",
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "files": [
+      "main/**/*",
+      "preload/**/*",
+      "renderer/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        { "target": "dir", "arch": ["x64"] },
+        { "target": "zip", "arch": ["x64"] }
+      ],
+      "icon": "assets/icon.ico"
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8",
+    "http-proxy-agent": "^7.0.2"
+  }
+}
