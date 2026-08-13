@@ -141,15 +141,25 @@ npm start
 ### 打包分发
 
 ```bash
-# 构建 dir + zip（推荐）
+# Windows：构建 dir + zip（推荐）
 npm run dist
 
-# 仅构建 dir（不打包 zip）
+# Windows：仅构建 dir（不打包 zip）
 npm run pack
+
+# macOS：构建 dmg + dir（在 macOS 上运行）
+npm run dist:mac
+
+# Linux：构建 AppImage + deb（在 Linux 上运行）
+npm run dist:linux
 ```
 
 输出文件位于 `dist/` 目录：
-- `抖音摸鱼收藏夹-1.0.0-win.zip` — 解压即用的完整应用（约 111MB，含 ffmpeg.dll）
+- Windows：`抖音摸鱼收藏夹-1.0.0-win.zip` — 解压即用的完整应用（约 111MB，含 ffmpeg.dll）
+- macOS：`dist/mac/{抖音摸鱼收藏夹.app, .dmg}`
+- Linux：`dist/{抖音摸鱼收藏夹.AppImage, .deb}`
+
+> 💡 Electron 无法在单一操作系统上交叉编译其他平台的签名安装包（如 Windows 上不能直接产出可用的 macOS `.dmg`）。请在**目标平台**对应的系统上运行对应的 `dist:*` 脚本。
 
 ## 📖 使用指南
 
@@ -265,7 +275,7 @@ npm run pack
 | 观看历史 404 | 抖音 Web 端未提供稳定的历史接口 | 目前仅 demo 兜底；未来考虑接入 App 私有接口 |
 | Cookie 有效期 | 抖音 Cookie 会过期 | 过期后重新粘贴；提供一键检测功能 |
 | IP 限流 | 数据中心 IP 可能被抖音限制 | 个人电脑 + 家庭网络一般无问题 |
-| 仅 Windows | 未测试 macOS/Linux | Electron 本身跨平台，但 UI 针对Windows优化 |
+| 跨平台支持 | 运行时依赖 Electron，本身跨平台；构建已配置 `win` / `mac` / `linux` 三端目标。macOS（需 `npm run dist:mac`）与 Linux（需 `npm run dist:linux`）尚未在当前环境实测，欢迎提交 Issue | 项目源码**无任何 `win32` 硬编码**，全部使用 Electron / Node 跨平台 API（窗口、托盘、路径、文件 IO） |
 
 ## 📦 依赖清单
 
