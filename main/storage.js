@@ -32,7 +32,8 @@ class Storage {
 
   // 便捷访问器
   getConfig() {
-    return this.read('config', {
+    // 先铺默认值再合并存量配置：老版本 config.json 缺失的新字段才不会丢默认值
+    const defaults = {
       theme: 'light',
       hotkey: 'Shift+D',
       autoOrganize: false,
@@ -42,7 +43,9 @@ class Storage {
       startMinimized: true,
       trayCount: true,
       alwaysOnTop: true
-    });
+    };
+    const saved = this.read('config', {});
+    return Object.assign({}, defaults, saved);
   }
   setConfig(cfg) { return this.write('config', cfg); }
 

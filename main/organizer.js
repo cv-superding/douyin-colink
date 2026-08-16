@@ -24,6 +24,15 @@ function toTime(v) {
 
 function evalCond(fav, cond, watchIdx) {
   const v = cond.value;
+  // watched 的值是 'true'/'false' 字符串，须按字符串比较而不是 truthiness
+  if (cond.field === 'watched') {
+    const key = norm(fav.author) + '|' + norm(fav.title);
+    const watched = watchIdx.has(key);
+    const want = String(v) === 'true';
+    return want ? watched : !watched;
+  }
+  // 其余条件值为空（null/undefined/空串）时视为无效条件，不匹配任何条目
+  if (v == null || String(v).trim() === '') return false;
   switch (cond.field) {
     case 'keyword': {
       const hay = norm(fav.title + ' ' + fav.author + ' ' + (fav.desc || ''));
@@ -47,11 +56,6 @@ function evalCond(fav, cond, watchIdx) {
       const t = toTime(v);
       // 日期串按当天结束时刻算（含当天）
       return t != null && (fav.ts || 0) <= (t + 86399999);
-    }
-    case 'watched': {
-      const key = norm(fav.author) + '|' + norm(fav.title);
-      const watched = watchIdx.has(key);
-      return cond.value ? watched : !watched;
     }
     default:
       return false;
@@ -102,7 +106,7 @@ function run(favorites, rules, folders, watch, opt = {}) {
       const a = rule.action || {};
       if (apply) {
         if (a.type === 'moveToFolder' && folders.some((x) => x.id === a.folderId)) {
-          fav.folderId = a.folderId; changed++;
+          if (fav.folderId !== a.folderId) { fav.folderId = a.folderId; changed++; }
         } else if (a.type === 'tag' && a.tag) {
           fav.tags = fav.tags || [];
           if (!fav.tags.includes(a.tag)) { fav.tags.push(a.tag); changed++; }

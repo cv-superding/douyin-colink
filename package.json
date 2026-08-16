@@ -1,6 +1,6 @@
 {
   "name": "douyin-colink",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "抖音收藏与观看记录的摸鱼悬浮窗应用",
   "main": "main/index.js",
   "author": "douyin-colink",
@@ -54,7 +54,6 @@
   },
   "devDependencies": {
     "electron": "^33.0.0",
-    "electron-builder": "^25.1.8",
-    "http-proxy-agent": "^7.0.2"
+    "electron-builder": "^25.1.8"
   }
 }

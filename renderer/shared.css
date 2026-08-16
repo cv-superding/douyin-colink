@@ -148,6 +148,9 @@ html, body {
 .btn.disabled, .btn.play.disabled { opacity: .45; pointer-events: none; }
 .move-sel { padding: 4px 6px; font-size: 11px; border: 1px solid var(--border); border-radius: 6px;
   background: var(--surface-2); color: var(--text); max-width: 90px; }
+.fav-search { flex: 1; min-width: 0; padding: 6px 10px; font-size: 12px; font-family: inherit;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); }
+.fav-search:focus { outline: none; border-color: var(--accent); }
 .tags { display: flex; gap: 6px; flex-wrap: wrap; }
 .tag { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
 .marked-pill { background: rgba(216,90,48,.14); color: var(--danger); padding: 4px 10px; border-radius: 999px;

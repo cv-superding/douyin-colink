@@ -8,7 +8,7 @@
   <img src="https://img.shields.io/badge/Electron-33-blue?logo=electron" alt="Electron" />
   <img src="https://img.shields.io/badge/Platform-Windows-green?logo=windows" alt="Platform" />
   <img src="https://img.shields.io/badge/License-Apache--2.0-orange" alt="License" />
-  <img src="https://img.shields.io/badge/Version-1.0.0-brightgreen" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-1.1.0-brightgreen" alt="Version" />
 </p>
 
 ---
@@ -19,10 +19,13 @@
 |------|------|------|
 | 🖥️ **悬浮窗** | 无边框透明置顶窗口 | 支持拖拽移动、右下角缩放手柄、全局快捷键呼出（默认 `Shift+D`）、系统托盘最小化 |
 | 📺 **观看记录** | 多级级联筛选 | 按 **年 / 月 / 日 / 时段** 四级筛选，列表展示，支持导出 CSV |
-| 📁 **收藏夹** | 按文件夹分组展示 | 药丸标签切换文件夹，按日期分组，支持**移动到其他文件夹** / 删除 |
+| 📁 **收藏夹** | 按文件夹分组展示 | 药丸标签切换文件夹，按日期分组，支持**移动到其他文件夹** / 删除 / **搜索** / **删除文件夹** / 导出 CSV |
 | ▶️ **视频播放** | 应用内播放窗 | 点击收藏夹视频直接播放，支持**画质切换**（1080P/720P/540P/360P）、**倍速播放**（0.5×~2×）、**进度记忆** |
-| 🤖 **自动整理** | 规则引擎 | 可视化规则编辑器：条件（关键词/作者/类型/时长/日期，AND 组合）+ 动作（移至文件夹 / 打标签 / 忽略），支持**预览命中 (dry-run)** 后执行 |
-| 🔑 **真实采集** | 抖音 Web API | 通过 Cookie + X-Bogus 签名采集本人收藏夹和观看历史，数据存本机，不上云 |
+| 🤖 **自动整理** | 规则引擎 | 可视化规则编辑器：条件（关键词/作者/类型/时长/日期/是否已看，AND 组合）+ 动作（移至文件夹 / 打标签 / 忽略），支持**预览命中 (dry-run)** 后执行 |
+| 🔑 **真实采集** | 抖音 Web API | 通过 Cookie + X-Bogus 签名采集本人收藏夹和观看历史，数据存本机，不上云；重新采集时**保留你手动整理的文件夹归属与标签** |
+| 🎲 **随机摸鱼** | 一键开摸 | 从可播放的收藏中随机挑一条直接播放 |
+| ⌨ **快捷键录制** | 按键即存 | 设置页点击输入框直接按下组合键即可录入，无需手打 accelerator 字符串 |
+| 🔄 **实时同步** | 多窗口联动 | 任一窗口采集/清空数据，悬浮窗与设置页统计即时刷新；托盘提示可显示今日观看数 |
 | 🎨 **主题系统** | 5 套主题 | 浅色 / 深色 / 水墨 / 薄荷 / IDE，实时切换，与 [words-fish](https://github.com/cv-superding/words-fish) UI 风格完全对齐 |
 
 ## 📸 界面预览
@@ -106,6 +109,7 @@ saveProgress(id, sec)   ←→   player:save-progress
 getSpeed() / setSpeed(s) ←→ player:get/set-speed   获取/设置倍速
 clearData()             →    data:clear            清空本地数据
 onTheme(cb)            ←    ui:theme             主题变更广播
+onDataChanged(cb)      ←    data:changed         数据变更广播（采集/清空后）
 getConfig() / saveCfg() ←→   cfg:get / cfg:set     读写配置
 ```
 
@@ -155,7 +159,7 @@ npm run dist:linux
 ```
 
 输出文件位于 `dist/` 目录：
-- Windows：`抖音摸鱼收藏夹-1.0.0-win.zip` — 解压即用的完整应用（约 111MB，含 ffmpeg.dll）
+- Windows：`抖音摸鱼收藏夹-1.1.0-win.zip` — 解压即用的完整应用（约 111MB，含 ffmpeg.dll）
 - macOS：`dist/mac/{抖音摸鱼收藏夹.app, .dmg}`
 - Linux：`dist/{抖音摸鱼收藏夹.AppImage, .deb}`
 
@@ -289,8 +293,34 @@ npm run dist:linux
 |----|------|------|
 | electron | ^33.0.0 | 桌面应用框架 |
 | electron-builder | ^25.1.8 | 应用打包 |
-| http-proxy-agent | ^7.0.2 | 采集时代理支持 |
-| undici | *(已安装)* | HTTP 客户端（fetch polyfill） |
+
+## 📋 更新日志
+
+### v1.1.0（2026-08-17）
+
+**修复：**
+- 规则引擎：`是否已看=否` 条件失效（字符串 `'false'` 被当作 truthy）
+- 规则引擎：空关键词/空时长条件会误匹配**所有**收藏
+- Windows 下应用内播放窗 `file://` 路径含反斜杠导致加载失败
+- 设置页「显示悬浮窗」按钮只关闭设置窗、并不唤出悬浮窗
+- 自定义快捷键后按下去只「显示」不再「隐藏」（与启动行为不一致）
+- 真实采集整体覆盖数据，用户手动整理的文件夹归属/标签被清空（现按 id 合并保留）
+- 旧版本 config.json 缺失新字段时丢失默认值（如 trayCount/dedupe）
+- CSV 导出中文在 Excel 打开乱码（补 BOM）
+- 采集请求无超时，断网时按钮永久转圈（现 15s 超时）
+- `托盘显示今日计数` 开关此前无任何实现（现写入托盘 tooltip）
+- 画质切换按钮高亮按文字匹配，两档同标签时一起点亮（改为按 URL 匹配）
+- `openExternal` 未校验协议，允许任意 scheme（现仅 http/https）
+- 移除从未被引用的 `http-proxy-agent` 死依赖
+
+**新功能：**
+- 🎲 随机摸鱼：从可播放收藏中随机挑一条直接播放
+- 🔍 收藏夹搜索（标题/作者/标签）
+- ⤓ 收藏夹导出 CSV
+- 🗑 删除文件夹（内容移回「未分类」）
+- ▶ 观看记录中的真实数据可直接播放
+- ⌨ 快捷键录制器（按键即存，自动校验修饰键）
+- 🔄 数据变更实时广播：设置页采集/清空后悬浮窗与统计即时刷新
 
 ## 📄 许可证
 

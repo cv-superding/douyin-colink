@@ -14,6 +14,13 @@ async function boot() {
   document.documentElement.setAttribute('data-theme', STATE.cfg.theme || 'light');
   // 主题变更实时同步（设置页切换主题时主进程会广播）
   window.dy.onTheme((t) => { document.documentElement.setAttribute('data-theme', t || 'light'); });
+  // 数据变更实时同步（设置页采集/清空后主进程会广播）
+  window.dy.onDataChanged(async () => {
+    const [w, f, fo] = await Promise.all([window.dy.watch.get(), window.dy.fav.get(), window.dy.folders.get()]);
+    STATE.watch = w || []; STATE.favs = f || []; STATE.folders = fo || [];
+    $('#prog').textContent = `观看 ${STATE.watch.length} · 收藏 ${STATE.favs.length}`;
+    renderWatch(); renderFav();
+  });
   const [w, f, fo] = await Promise.all([window.dy.watch.get(), window.dy.fav.get(), window.dy.folders.get()]);
   STATE.watch = w || []; STATE.favs = f || []; STATE.folders = fo || [];
   $('#prog').textContent = `观看 ${STATE.watch.length} · 收藏 ${STATE.favs.length}`;
@@ -53,7 +60,9 @@ function setActions() {
     a.appendChild(mkAct('⤓ 导出CSV', '', exportCsv));
     a.appendChild(mkAct('✕ 清空筛选', '', () => { STATE.filter = { y: '', m: '', d: '', h: '' }; renderWatch(); }));
   } else if (STATE.tab === 'fav') {
-    a.appendChild(mkAct('🗂 新建文件夹', 'primary', newFolder));
+    a.appendChild(mkAct('🎲 随机摸鱼', 'primary', randomMoyu));
+    a.appendChild(mkAct('🗂 新建文件夹', '', newFolder));
+    a.appendChild(mkAct('⤓ 导出CSV', '', exportFavCsv));
     a.appendChild(mkAct('⟳ 刷新', '', async () => { STATE.favs = await window.dy.fav.get(); renderFav(); }));
     a.appendChild(mkAct('🤖 一键整理', '', runOrganize));
   } else {
@@ -103,6 +112,15 @@ function renderWatch() {
     row.innerHTML = `<div><div class="name">${esc(x.title)} <span class="meta">${esc(x.author)}</span></div>
       <div class="meta">${fmt(x.ts)} · ${typeName(x.type)} · 进度 ${Math.round((x.progress || 0) * 100)}%</div></div>
       <div class="actions"><span class="tag">${esc(x.source)}</span></div>`;
+    // 真实采集的观看记录可直接播放（demo 数据没有 awemeId）
+    if (x.awemeId && (x.playUrl || (x.playUrls || []).length)) {
+      const p = document.createElement('button');
+      p.className = 'btn play'; p.textContent = '▶'; p.title = '播放';
+      p.addEventListener('click', () => {
+        window.dy.play({ awemeId: x.awemeId, playUrl: x.playUrl || '', title: x.title, author: x.author, thumb: x.thumb || '' });
+      });
+      row.querySelector('.actions').insertBefore(p, row.querySelector('.actions .tag'));
+    }
     box.appendChild(row);
   });
   if (list.length === 0) {
@@ -127,21 +145,55 @@ function renderFav() {
   });
   v.appendChild(chips);
 
+  // 工具栏：搜索框（输入时只刷新列表，避免重建输入框丢失焦点）+ 删除当前文件夹
+  const bar = document.createElement('div'); bar.style.cssText = 'display:flex;gap:6px;margin-bottom:10px';
+  const s = document.createElement('input'); s.className = 'fav-search'; s.placeholder = '🔍 搜索标题 / 作者 / 标签…';
+  s.value = STATE.favQ || '';
+  s.addEventListener('input', () => { STATE.favQ = s.value.trim(); renderFavList(); });
+  bar.appendChild(s);
+  if (STATE.folder !== 'all' && STATE.folder !== 'uncat') {
+    const del = document.createElement('button'); del.className = 'btn danger'; del.style.cssText = 'padding:5px 10px;font-size:12px;white-space:nowrap';
+    del.textContent = '🗑 删除此文件夹';
+    del.addEventListener('click', async () => {
+      const fo = STATE.folders.find((f) => f.id === STATE.folder);
+      if (!fo) return;
+      if (!confirm(`确定删除文件夹「${fo.name}」吗？\n其中的收藏会移回「未分类」，不会被删除。`)) return;
+      STATE.favs.forEach((x) => { if (x.folderId === STATE.folder) x.folderId = 'uncat'; });
+      STATE.folders = STATE.folders.filter((f) => f.id !== STATE.folder);
+      STATE.folder = 'all';
+      await Promise.all([window.dy.folders.save(STATE.folders), window.dy.fav.save(STATE.favs)]);
+      renderFav();
+    });
+    bar.appendChild(del);
+  }
+  v.appendChild(bar);
+
+  const box = document.createElement('div'); box.className = 'book-list'; box.id = 'fav-list';
+  v.appendChild(box);
+  renderFavList();
+}
+
+function renderFavList() {
+  const box = $('#fav-list'); if (!box) return;
+  box.innerHTML = '';
   let items = STATE.favs;
   if (STATE.folder !== 'all') items = items.filter((x) => x.folderId === STATE.folder);
+  const q = (STATE.favQ || '').toLowerCase();
+  if (q) {
+    items = items.filter((x) =>
+      (String(x.title || '') + ' ' + String(x.author || '') + ' ' + (x.tags || []).join(' ')).toLowerCase().includes(q));
+  }
   items = items.slice().sort((a, b) => b.ts - a.ts);
 
   // 按 年/月/日 分组
   const groups = {};
   items.forEach((x) => { const k = fmtDate(x.ts); (groups[k] = groups[k] || []).push(x); });
-  const box = document.createElement('div'); box.className = 'book-list';
   Object.keys(groups).sort((a, b) => groups[b][0].ts - groups[a][0].ts).forEach((k) => {
     const hd = document.createElement('div'); hd.className = 'muted small'; hd.style.margin = '6px 2px 2px'; hd.textContent = `📅 ${k}（${groups[k].length}）`;
     box.appendChild(hd);
     groups[k].forEach((x) => box.appendChild(favRow(x)));
   });
-  if (items.length === 0) box.innerHTML = '<div class="empty">该文件夹暂无收藏</div>';
-  v.appendChild(box);
+  if (items.length === 0) box.innerHTML = '<div class="empty">' + (q ? '没有匹配「' + esc(q) + '」的收藏' : '该文件夹暂无收藏') + '</div>';
 }
 
 function favRow(x) {
@@ -206,25 +258,44 @@ async function runOrganize() {
 }
 
 /* ---------- 采集 / 导出 / 工具 ---------- */
-async function collect() {
-  const b = $$('.actions .act')[0]; b.classList.add('loading');
+async function collect(ev) {
+  // 用事件目标而非位置猜测按钮，tab 切换后依旧正确
+  const b = ev && ev.currentTarget ? ev.currentTarget : $$('.actions .act')[0];
+  if (b) b.classList.add('loading');
   const r = await window.dy.collect();
   STATE.watch = await window.dy.watch.get(); STATE.favs = await window.dy.fav.get();
   $('#prog').textContent = `观看 ${STATE.watch.length} · 收藏 ${STATE.favs.length}`;
-  b.classList.remove('loading');
+  if (b) b.classList.remove('loading');
   let msg = r.ok ? `采集完成（${r.mode === 'demo' ? '演示数据' : '真实'}）：收藏 ${r.favorites}` : '采集失败：' + (r.error || '');
   if (r.ok && r.historyUnavailable) msg += '（观看历史抖音接口不可用，仅收藏夹）';
   showToast(msg);
   renderWatch(); renderFav();
 }
+// CSV 首加 BOM，否则 Excel 直接打开中文会乱码
+function downloadCsv(filename, header, rows) {
+  const csv = '\uFEFF' + header + '\n' + rows.map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);   // 释放 Blob URL，避免内存累积
+}
 function exportCsv() {
   const rows = STATE.watch.map((x) => [fmt(x.ts), x.title, x.author, typeName(x.type), x.source, Math.round((x.progress || 0) * 100) + '%']);
-  const csv = '时间,标题,作者,类型,来源,进度\n' + rows.map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = 'watch-history.csv'; a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);   // 释放 Blob URL，避免内存累积
+  downloadCsv('watch-history.csv', '时间,标题,作者,类型,来源,进度', rows);
   showToast('已导出 CSV');
+}
+function exportFavCsv() {
+  const rows = STATE.favs.map((x) => [fmt(x.ts), x.title, x.author, typeName(x.type), (x.tags || []).join(' '), x.url]);
+  downloadCsv('favorites.csv', '时间,标题,作者,类型,标签,链接', rows);
+  showToast(`已导出 ${STATE.favs.length} 条收藏`);
+}
+// 随机摸鱼：从可播放的收藏里随机挑一条直接播放
+function randomMoyu() {
+  const pool = STATE.favs.filter((x) => x.awemeId && (x.playUrl || (x.playUrls || []).length));
+  if (!pool.length) { showToast('暂无可播放的收藏（真实采集后可用）'); return; }
+  const x = pool[Math.floor(Math.random() * pool.length)];
+  showToast('🎲 摸到：「' + (x.title || '').slice(0, 20) + '」');
+  window.dy.play({ awemeId: x.awemeId, playUrl: x.playUrl || '', title: x.title, author: x.author, thumb: x.thumb || '' });
 }
 async function newFolder() {
   const name = prompt('文件夹名称：'); if (!name) return;

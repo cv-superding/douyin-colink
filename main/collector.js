@@ -73,23 +73,33 @@ function signXBogus(query) {
   return xb.sign(query, UA);
 }
 
-// 发起带签名的抖音 Web 请求
+// 发起带签名的抖音 Web 请求（15s 超时，避免断网/被墙时采集按钮永久挂起）
 async function douyinGet(path, params, cookie) {
   const qs = Object.keys(params)
     .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
     .join('&');
   const signed = signXBogus(qs);
   const url = `https://www.douyin.com${path}?${qs}&X-Bogus=${signed}`;
-  const res = await fetch(url, {
-    headers: {
-      'User-Agent': UA,
-      'Referer': 'https://www.douyin.com/',
-      'Cookie': cookie,
-      'Accept': 'application/json'
-    }
-  });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  return res.json();
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 15000);
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': UA,
+        'Referer': 'https://www.douyin.com/',
+        'Cookie': cookie,
+        'Accept': 'application/json'
+      },
+      signal: ctl.signal
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.json();
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw new Error('请求超时（15s），请检查网络');
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // 从 aweme.video 中挑选最高清晰度的可播放地址。
@@ -268,21 +278,29 @@ async function collect(store, cfg) {
   if (cfg.collectMode === 'real' && cfg.cookie) {
     const r = await collectReal(cfg.cookie);
     if (r.ok) {
-      // 关键修复：真实采集必须「整体替换」，即便某类为空也要覆盖，
-      // 否则 demo 模式遗留的假数据会一直显示在真实模式里（尤其是观看记录）。
-      store.setFavorites(r.favorites || []);
+      // 整体替换观看记录；收藏则按 id 合并——保留用户在本机手动整理的
+      // 文件夹归属与标签，否则每次重新采集都会把整理成果打回「未分类」。
+      const oldById = new Map((store.getFavorites() || []).map((f) => [f.id, f]));
+      const fresh = r.favorites || [];
+      const merged = fresh.map((n) => {
+        const old = oldById.get(n.id);
+        return old
+          ? Object.assign({}, n, { folderId: old.folderId || 'uncat', tags: old.tags || [] })
+          : n;
+      });
+      store.setFavorites(merged);
       store.setWatch(r.watch || []);
-      const w = (r.watch || []).length, f = (r.favorites || []).length;
+      const w = (r.watch || []).length, f = merged.length;
       return { mode: 'real', ok: true, watch: w, favorites: f, historyUnavailable: !!r.historyUnavailable };
     }
     return { mode: 'real', ok: false, error: r.error };
   }
   // demo
-  const existing = store.getWatch();
-  if (!existing || existing.length === 0) {
-    store.setWatch(genWatch());
-    store.setFavorites(genFavorites());
-  }
+  const existingWatch = store.getWatch();
+  const existingFav = store.getFavorites();
+  // 两类数据分开判空：只清空过收藏（或只清空过观看）时也能单独补齐演示数据
+  if (!existingWatch || existingWatch.length === 0) store.setWatch(genWatch());
+  if (!existingFav || existingFav.length === 0) store.setFavorites(genFavorites());
   const w = store.getWatch().length;
   const f = store.getFavorites().length;
   return { mode: 'demo', ok: true, watch: w, favorites: f };

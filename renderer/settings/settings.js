@@ -13,6 +13,11 @@ async function boot() {
   [S.watch, S.folders, S.rules, S.favs] = await Promise.all([window.dy.watch.get(), window.dy.folders.get(), window.dy.rules.get(), window.dy.fav.get()]);
   bindNav(); bindWindow(); bindAppearance(); bindHotkey(); bindAccount(); bindGeneral(); bindRules();
   renderOverview(); setStatus('就绪');
+  // 其他窗口采集/清空数据后，这里同步刷新概览统计
+  window.dy.onDataChanged(async () => {
+    [S.watch, S.favs] = await Promise.all([window.dy.watch.get(), window.dy.fav.get()]);
+    renderOverview();
+  });
 }
 
 /* ---------- 导航 ---------- */
@@ -27,7 +32,8 @@ function bindNav() {
 function bindWindow() {
   $('#btn-min').addEventListener('click', () => window.close());
   $('#btn-close').addEventListener('click', () => window.close());
-  $('#btn-show-popup').addEventListener('click', () => window.close());
+  // 显示悬浮窗：先真正唤出悬浮窗再关闭设置窗（原来只关窗，悬浮窗并不会出现）
+  $('#btn-show-popup').addEventListener('click', () => { try { window.dy.togglePopup(); } catch (_) {} window.close(); });
   $('#btn-quit').addEventListener('click', () => window.dy.quit());
 }
 function setStatus(t) { $('#status-line').textContent = t; }
@@ -178,9 +184,35 @@ function bindAppearance() {
 }
 
 /* ---------- 快捷键 ---------- */
+// 快捷键录制：点击输入框后直接按键组合，代替手打 accelerator 字符串
 function bindHotkey() {
-  const inp = $('#hotkey'); inp.value = S.cfg.hotkey || 'Shift+D';
-  inp.addEventListener('change', (e) => { S.cfg.hotkey = e.target.value.trim() || 'Shift+D'; saveCfg(); setStatus('快捷键已更新'); });
+  const inp = $('#hotkey');
+  inp.value = S.cfg.hotkey || 'Shift+D';
+  inp.addEventListener('keydown', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const key = normKey(e);
+    if (!key) { setStatus('该按键不能作为快捷键主键'); return; }
+    const mods = [];
+    if (e.ctrlKey) mods.push('Ctrl');
+    if (e.altKey) mods.push('Alt');
+    if (e.shiftKey) mods.push('Shift');
+    if (e.metaKey) mods.push('Super');
+    if (!mods.length) { setStatus('请至少配合一个修饰键（Ctrl / Alt / Shift）'); return; }
+    const acc = mods.join('+') + '+' + key;
+    inp.value = acc;
+    S.cfg.hotkey = acc; saveCfg();
+    setStatus('快捷键已更新：' + acc);
+  });
+}
+// 把按键事件归一为 Electron accelerator 的主键名
+function normKey(e) {
+  const k = e.key;
+  if (/^[a-zA-Z]$/.test(k)) return k.toUpperCase();
+  if (/^[0-9]$/.test(k)) return k;
+  if (/^F([1-9]|1[0-2])$/.test(k)) return k;
+  const map = { ' ': 'Space', ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right',
+    ',': ',', '.': '.', '/': '/', ';': ';', "'": "'", '[': '[', ']': ']', '\\': '\\', '`': '`' };
+  return map[k] || null;
 }
 
 async function saveCfg() { await window.dy.cfg.set(S.cfg); }

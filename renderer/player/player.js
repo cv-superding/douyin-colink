@@ -44,6 +44,7 @@ async function setupQuality() {
     const b = document.createElement('button');
     b.className = 'qbtn' + (o.url === currentQualityUrl ? ' active' : '');
     b.textContent = o.label;
+    b.dataset.url = o.url;
     b.addEventListener('click', () => switchQuality(o));
     qsel.appendChild(b);
   });
@@ -53,7 +54,8 @@ function switchQuality(opt) {
   if (opt.url === currentQualityUrl) return;
   const t = video.currentTime || 0;
   currentQualityUrl = opt.url;
-  $$('.qbtn', qsel).forEach((b) => b.classList.toggle('active', b.textContent === opt.label));
+  // 用 URL 而非文字匹配高亮：不同码率可能映射到同一清晰度标签
+  $$('.qbtn', qsel).forEach((b) => b.classList.toggle('active', b.dataset.url === opt.url));
   video.src = opt.url;
   const onMeta = () => { try { if (t > 1) video.currentTime = t; } catch (_) {} video.removeEventListener('loadedmetadata', onMeta); };
   video.addEventListener('loadedmetadata', onMeta);

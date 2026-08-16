@@ -39,6 +39,8 @@ const api = {
   setAlwaysOnTop: (on) => ipcRenderer.send('window:set-on-top', on),
   // 主进程广播的主题变更（如设置页切换主题时实时同步到本窗口）
   onTheme: (cb) => ipcRenderer.on('ui:theme', (_, t) => cb(t)),
+  // 主进程广播的数据变更（设置页采集/清空后各窗口即时刷新）
+  onDataChanged: (cb) => ipcRenderer.on('data:changed', () => cb()),
   play: (opts) => ipcRenderer.send('window:play', opts),
   openExternal: (url) => ipcRenderer.send('window:open-external', url),
   quit: () => ipcRenderer.send('app:quit')

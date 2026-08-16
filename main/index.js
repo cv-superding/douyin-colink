@@ -1,5 +1,6 @@
 'use strict';
 const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, nativeImage, shell } = require('electron');
+const { pathToFileURL } = require('url');
 const path = require('path');
 const Storage = require('./storage');
 const collector = require('./collector');
@@ -64,7 +65,7 @@ function openPlayer(opts) {
     thumb: opts.thumb || '',
     aweme: opts.awemeId || ''
   }).toString();
-  const url = 'file://' + path.join(RENDERER, 'player', 'player.html') + '?' + q;
+  const url = pathToFileURL(path.join(RENDERER, 'player', 'player.html')).href + '?' + q;
   if (winReady(playerWin)) { playerWin.loadURL(url); playerWin.show(); playerWin.focus(); return; }
   playerWin = new BrowserWindow({
     width: 420, height: 760,
@@ -101,9 +102,31 @@ function buildTray() {
   tray.setToolTip('抖音摸鱼收藏夹');
   tray.setContextMenu(menu);
   tray.on('click', showPopup);
+  updateTrayTip();
 }
 
 /* ---------------- IPC ---------------- */
+// 托盘提示：按配置附加今日观看数（trayCount 设置原本没有实现，这里补上）
+function updateTrayTip() {
+  if (!tray || tray.isDestroyed()) return;
+  try {
+    let tip = '抖音摸鱼收藏夹';
+    if (store.getConfig().trayCount) {
+      const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+      const n = store.getWatch().filter((w) => (w.ts || 0) >= t0.getTime()).length;
+      tip += ` · 今日 ${n}`;
+    }
+    tray.setToolTip(tip);
+  } catch (_) {}
+}
+// 数据变更后广播给所有窗口（设置页采集/清空后悬浮窗即时刷新，不再显示旧数据）
+function broadcastDataChanged() {
+  BrowserWindow.getAllWindows().forEach((w) => {
+    if (!w.isDestroyed()) w.webContents.send('data:changed');
+  });
+  updateTrayTip();
+}
+
 function registerIpc() {
   ipcMain.handle('cfg:get', () => store.getConfig());
   ipcMain.handle('cfg:set', (_, cfg) => {
@@ -113,7 +136,8 @@ function registerIpc() {
     // 应用快捷键
     try {
       globalShortcut.unregisterAll();
-      if (next.hotkey) globalShortcut.register(next.hotkey, () => showPopup());
+      // 与启动时一致：快捷键切换显隐，而不是只显示
+      if (next.hotkey) globalShortcut.register(next.hotkey, () => togglePopup());
     } catch (_) {}
     // 主题变更实时广播给存活窗口（悬浮窗/播放窗是独立渲染进程）
     if (cfg && cfg.theme && cfg.theme !== prev.theme) {
@@ -131,10 +155,15 @@ function registerIpc() {
   ipcMain.handle('rules:save', (_, list) => store.setRules(list));
   ipcMain.handle('fav:save', (_, list) => store.setFavorites(list));
   // 清空本机已采集的观看/收藏数据（不含设置与规则），用于排错或重新采集
-  ipcMain.handle('data:clear', () => { store.setWatch([]); store.setFavorites([]); return { ok: true }; });
+  ipcMain.handle('data:clear', () => {
+    store.setWatch([]); store.setFavorites([]);
+    broadcastDataChanged();
+    return { ok: true };
+  });
 
   ipcMain.handle('collect', async () => {
     const r = await collector.collect(store, store.getConfig());
+    if (r.ok) broadcastDataChanged();
     return r;
   });
 
@@ -164,8 +193,10 @@ function registerIpc() {
   });
   // 打开应用内播放窗口
   ipcMain.on('window:play', (_, opts) => openPlayer(opts || {}));
-  // 用系统默认浏览器打开外链
-  ipcMain.on('window:open-external', (_, url) => { try { if (url) shell.openExternal(url); } catch (_) {} });
+  // 用系统默认浏览器打开外链（仅允许 http/https，防止渲染层被注入任意协议）
+  ipcMain.on('window:open-external', (_, url) => {
+    try { if (url && /^https?:\/\//i.test(String(url))) shell.openExternal(String(url)); } catch (_) {}
+  });
 }
 
 app.whenReady().then(() => {
